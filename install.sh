@@ -25,6 +25,7 @@ apt-get update
 apt-get install -y apparmor-utils apt-transport-https avahi-daemon ca-certificates curl dbus jq network-manager socat software-properties-common bluez bluetooth libbluetooth-dev 
 systemctl disable ModemManager
 apt-get purge -y modemmanager
+apt autoremove -y
 
 
 
