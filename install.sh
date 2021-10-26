@@ -16,7 +16,7 @@ sleep 3
 echo "Benvenuto,figlio della perdizione "
 printf "\U$(printf %08x 128520)\n"
 sleep 3
-echo "stai per installare un container docker di home assistant supervised !"
+echo "stai per installare dei containers docker di home assistant supervised !"
 sleep 7
 echo "cominciamo!"
 
@@ -53,18 +53,18 @@ PROFILES_DIR="${DATA}/apparmor"
 CACHE_DIR="${PROFILES_DIR}/cache"
 REMOVE_DIR="${PROFILES_DIR}/remove"
 
-# Exists AppArmor
+#  AppArmor
 if ! command -v apparmor_parser > /dev/null 2>&1; then
     echo "[Warning]: No apparmor_parser on host system!"
     exit 0
 fi
 
-# Check folder structure
+# Check struttura cartelle
 mkdir -p "${PROFILES_DIR}"
 mkdir -p "${CACHE_DIR}"
 mkdir -p "${REMOVE_DIR}"
 
-# Load/Update exists/new profiles
+# Load/Update profili
 for profile in "${PROFILES_DIR}"/*; do
     if [ ! -f "${profile}" ]; then
         continue
@@ -76,13 +76,13 @@ for profile in "${PROFILES_DIR}"/*; do
     fi
 done
 
-# Cleanup old profiles
+# Cleanup old profili
 for profile in "${REMOVE_DIR}"/*; do
     if [ ! -f "${profile}" ]; then
         continue
     fi
 
-    # Unload Profile
+    # Unload Profili
     if apparmor_parser -R -W -L "${CACHE_DIR}" "${profile}"; then
         if rm -f "${profile}"; then
             continue
