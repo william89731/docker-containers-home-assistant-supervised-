@@ -23,7 +23,21 @@ echo "cominciamo!"
 WD=/opt/hassio
 cd $WD/setup
 docker-compose down --remove-orphans
+
 rm -rf /opt/hassio
+docker stop hassio_audio
+docker stop hassio_cli
+docker stop hassio_dns
+docker stop hassio_multicast
+docker stop hassio_opserver
+docker stop homeassistant
+
+docker rm hassio_audio
+docker rm hassio_cli
+docker rm hassio_dns
+docker rm hassio_multicast
+docker rm hassio_opserver
+docker rm homeassistant
 
 sleep 3                                                                        
 
