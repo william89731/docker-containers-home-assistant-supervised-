@@ -24,7 +24,6 @@ WD=/opt/hassio
 cd $WD/setup
 docker-compose down --remove-orphans
 
-rm -rf /opt/hassio
 docker stop hassio_audio
 docker stop hassio_cli
 docker stop hassio_dns
@@ -39,6 +38,18 @@ docker rm hassio_multicast
 docker rm hassio_observer
 docker rm homeassistant
 
+
+
+rm -rf /opt/hassio
+
 sleep 3                                                                        
 
-echo "alla prossima. bye bye!"
+echo "
+                     _ _                
+                      | | |               
+  __ _  ___   ___   __| | |__  _   _  ___ 
+ / _` |/ _ \ / _ \ / _` | '_ \| | | |/ _ \
+| (_| | (_) | (_) | (_| | |_) | |_| |  __/
+ \__, |\___/ \___/ \__,_|_.__/ \__, |\___|
+  __/ |                         __/ |     
+ |___/                         |___/      "
