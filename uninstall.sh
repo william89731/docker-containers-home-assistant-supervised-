@@ -29,14 +29,14 @@ docker stop hassio_audio
 docker stop hassio_cli
 docker stop hassio_dns
 docker stop hassio_multicast
-docker stop hassio_opserver
+docker stop hassio_observer
 docker stop homeassistant
 
 docker rm hassio_audio
 docker rm hassio_cli
 docker rm hassio_dns
 docker rm hassio_multicast
-docker rm hassio_opserver
+docker rm hassio_observer
 docker rm homeassistant
 
 sleep 3                                                                        
