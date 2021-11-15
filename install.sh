@@ -1,4 +1,14 @@
 #!/bin/bash
+
+#da qui si possono impostare tutti i parametri dei files e delle cartelle
+BASE_DIR=/opt/hassio
+SETUP_DIR=$BASE_DIR/setup
+APPARMOR_SETUP=$SETUP_DIR/apparmor_setup.sh
+HASSIO_APPARMOR=$SETUP_DIR/hassio-apparmor
+HASSIO_JSON=$SETUP_DIR/hassio.json
+#trovo quale distro è
+DISTRO=$(cat /etc/issue|awk '{print $1}'|tr '[:upper:]' '[:lower:]')
+
 echo "
 	 ##         ######   ###   ##  ##    ##  ##    ## 
 	 ##         ######   ###   ##  ##    ##  :##  ##: 
@@ -20,39 +30,45 @@ echo "stai per installare dei containers docker di home assistant supervised !"
 sleep 7
 echo "cominciamo!"
 
-add-apt-repository universe
+#aggiungo i repo nel caso di ubuntu
+if [[ "${DISTRO}" =~ ^(ubuntu)$ ]]; then
+  add-apt-repository universe
+fi
+
+echo "Installo i pacchetti necessari..."
 apt-get update
 apt-get install -y apparmor-utils apt-transport-https avahi-daemon ca-certificates curl dbus jq network-manager socat software-properties-common bluez bluetooth libbluetooth-dev 
+echo "Disabilito ModemManager"
 systemctl disable ModemManager
 apt-get purge -y modemmanager
 apt autoremove -y
 
 
+mkdir -p $SETUP_DIR
+cd $SETUP_DIR
 
-WD=/opt/hassio
-mkdir -p $WD/setup
-cd $WD/setup
-cat << 'FNE' >/opt/hassio/setup/apparmor_setup.sh
-cat << 'EOF' >/opt/hassio/setup/hassio.json
+#rendiamo il file parametrico - ho tolto le referenze a /opt/hassio e sostituito con $BASE_DIR
+cat << FNE > $APPARMOR_SETUP
+cat << EOF > $HASSIO_JSON
 {
     "supervisor": "homeassistant/amd64-hassio-supervisor",
     "machine": "qemux86-64",
-    "data": "/opt/hassio"
+    "data": "$BASE_DIR"
 }
 EOF
 
-cat << 'FOE' >/usr/sbin/hassio-apparmor
+cat << 'FOE' > $HASSIO_APPARMOR
 #!/usr/bin/env bash
 set -e
 
 # carica config
-CONFIG_FILE=/opt/hassio/setup/hassio.json
+CONFIG_FILE=$HASSIO_JSON
 
 # leggi config
-DATA="$(jq --raw-output '.data // "/usr/share/hassio"' ${CONFIG_FILE})"
-PROFILES_DIR="${DATA}/apparmor"
-CACHE_DIR="${PROFILES_DIR}/cache"
-REMOVE_DIR="${PROFILES_DIR}/remove"
+DATA="\$(jq --raw-output '.data // "/usr/share/hassio"' \${CONFIG_FILE})"
+PROFILES_DIR="\${DATA}/apparmor"
+CACHE_DIR="\${PROFILES_DIR}/cache"
+REMOVE_DIR="\${PROFILES_DIR}/remove"
 
 #  AppArmor
 if ! command -v apparmor_parser > /dev/null 2>&1; then
@@ -61,49 +77,48 @@ if ! command -v apparmor_parser > /dev/null 2>&1; then
 fi
 
 # Check struttura cartelle
-mkdir -p "${PROFILES_DIR}"
-mkdir -p "${CACHE_DIR}"
-mkdir -p "${REMOVE_DIR}"
+mkdir -p "\${PROFILES_DIR}"
+mkdir -p "\${CACHE_DIR}"
+mkdir -p "\${REMOVE_DIR}"
 
 # Load/Update profili
-for profile in "${PROFILES_DIR}"/*; do
-    if [ ! -f "${profile}" ]; then
+for profile in "\${PROFILES_DIR}"/*; do
+    if [ ! -f "\${profile}" ]; then
         continue
     fi
 
     # Load Profile
-    if ! apparmor_parser -r -W -L "${CACHE_DIR}" "${profile}"; then
-        echo "[Error]: Can't load profile ${profile}"
+    if ! apparmor_parser -r -W -L "\${CACHE_DIR}" "\${profile}"; then
+        echo "[Error]: Can't load profile \${profile}"
     fi
 done
 
 # Cleanup old profili
-for profile in "${REMOVE_DIR}"/*; do
-    if [ ! -f "${profile}" ]; then
+for profile in "\${REMOVE_DIR}"/*; do
+    if [ ! -f "\${profile}" ]; then
         continue
     fi
 
     # Unload Profili
-    if apparmor_parser -R -W -L "${CACHE_DIR}" "${profile}"; then
-        if rm -f "${profile}"; then
+    if apparmor_parser -R -W -L "\${CACHE_DIR}" "\${profile}"; then
+        if rm -f "\${profile}"; then
             continue
         fi
     fi
-    echo "[Error]: Can't remove profile ${profile}"
+    echo "[Error]: Can't remove profile \${profile}"
 done
 FOE
-chmod +x /usr/sbin/hassio-apparmor
+chmod +x $HASSIO_APPARMOR
 #repeated on purpose
-#/usr/sbin/hassio-apparomor
-#/usr/sbin/hassio-apparomor
+#$HASSIO_APPARMOR
+#$HASSIO_APPARMOR
 FNE
-chmod +x /opt/hassio/setup/apparmor_setup.sh
+chmod +x $APPARMOR_SETUP
 
-
-WD=/opt/hassio
-mkdir -p $WD/setup
-cd $WD/setup
-cat << 'EOF' >docker-compose.yaml
+#già fatto prima...
+#mkdir -p $SETUP_DIR
+#cd $SETUP_DIR
+cat << EOF >docker-compose.yaml
 version: '3.8'
 services:
   hassio_supervisor:
@@ -113,7 +128,7 @@ services:
 
     volumes:
       - type: bind
-        source: /opt/hassio
+        source: $BASE_DIR
         target: /data
       - type: bind
         source: /etc/machine-id
@@ -136,7 +151,7 @@ services:
      # - apparmor:hassio-supervisor
 
     environment:
-      - SUPERVISOR_SHARE=/opt/hassio
+      - SUPERVISOR_SHARE=$BASE_DIR
       - SUPERVISOR_NAME=hassio_supervisor
       - HOMEASSISTANT_REPOSITORY=homeassistant/qemux86-homeassistant
       - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
@@ -161,5 +176,4 @@ echo "
 sleep 3                                                                        
 
 echo "fine installazione. BUON DIVERTIMENTO"
-
 
