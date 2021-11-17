@@ -166,7 +166,7 @@ command -v btmon > /dev/null 2>&1 || MISSING_PACKAGES+=("bluetooth")
 command -v update-ca-certificates > /dev/null 2>&1 || MISSING_PACKAGES+=("ca-certificates")
 command -v avahi-daemon > /dev/null 2>&1 || MISSING_PACKAGES+=("avahi-daemon")
 
-warn "MISSING_PACKAGES=$MISSING_PACKAGES"
+#warn "MISSING_PACKAGES=$MISSING_PACKAGES"
 
 if [[ ! -z "$MISSING_PACKAGES" ]]; then
   info "Installo i pacchetti necessari..."
@@ -293,7 +293,7 @@ cat << EOF >> $COMPOSE_FILE
 
     volumes:
       - type: bind
-        source: $BASE_DIR
+        source: $DATA_SHARE
         target: /data
       - type: bind
         source: /etc/machine-id
@@ -316,7 +316,7 @@ cat << EOF >> $COMPOSE_FILE
       - apparmor:hassio-supervisor
 
     environment:
-      - SUPERVISOR_SHARE=$BASE_DIR
+      - SUPERVISOR_SHARE=$DATA_SHARE
       - SUPERVISOR_NAME=hassio_supervisor
       - HOMEASSISTANT_REPOSITORY=$DOCKER_REPO/$MACHINE-$DOCKER_REPO
       - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
