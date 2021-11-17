@@ -60,6 +60,22 @@ DISTRO=$(cat /etc/issue|awk '{print $1}'|tr '[:upper:]' '[:lower:]')
 COMPOSE_DIR=$BASE_DIR
 TIMEOUT=1
 
+#controlla se la directory è scrivibile dall'utente 
+if [[ -d $BASE_DIR ]]; then
+  echo -n "La cartella $BASE_DIR esiste già, cancello il suo contenuto? [S/N]: ";
+  read;
+  if [[ $REPLY =~ ^(si|SI|Si|sI|Y|Yes) ]]; then
+    sudo rm -rf $BASE_DIR
+  else
+    warn "Cartella $BASE_DIR non cancellabile. Seleziona un'altra cartella"
+    exit 1
+  fi
+fi
+#  if [ -w "$BASE_DIR" ]; then $WRITABLE="ok"; else WRITABLE="ko"; fi
+#elif [[ -d "$BASE_DIR/.." ]]; then
+#  if [ -w "$BASE_DIR" ]; then $WRITABLE="ok"; else WRITABLE="ko"; fi
+#fi
+
 #controllo la connessione di rete
 while ! ping -c 1 -W 1 ${URL_VERSION_HOST}; do
     info "In attesa di ${URL_VERSION_HOST} - l'interfaccia di rete potrebbe esseere inattiva..."
@@ -138,20 +154,36 @@ fi
 # controlla pacchetti mancanti
 #command -v systemctl > /dev/null 2>&1 || MISSING_PACKAGES+=("systemd")
 command -v nmcli > /dev/null 2>&1 || MISSING_PACKAGES+=("network-manager")
-command -v apparmor_parser > /dev/null 2>&1 || MISSING_PACKAGES+=("apparmor")
-command -v docker > /dev/null 2>&1 || MISSING_PACKAGES+=("docker")
+command -v apparmor_parser > /dev/null 2>&1 || MISSING_PACKAGES+=("apparmor-utils")
+#docker diamo per scontato che sia già installato insieme al compose?
+#command -v docker > /dev/null 2>&1 || MISSING_PACKAGES+=("docker")
 command -v jq > /dev/null 2>&1 || MISSING_PACKAGES+=("jq")
 command -v curl > /dev/null 2>&1 || MISSING_PACKAGES+=("curl")
 command -v dbus-daemon > /dev/null 2>&1 || MISSING_PACKAGES+=("dbus")
+#perchè vanno installati i seguenti pacchetti?
+command -v socat > /dev/null 2>&1 || MISSING_PACKAGES+=("socat")
+command -v btmon > /dev/null 2>&1 || MISSING_PACKAGES+=("bluetooth")
+command -v update-ca-certificates > /dev/null 2>&1 || MISSING_PACKAGES+=("ca-certificates")
+command -v avahi-daemon > /dev/null 2>&1 || MISSING_PACKAGES+=("avahi-daemon")
 
-info "Installo i pacchetti necessari..."
-apt-get update
-apt-get install -y apparmor-utils avahi-daemon ca-certificates curl dbus jq network-manager socat software-properties-common bluez bluetooth libbluetooth-dev
-#apt-transport-https  
-info "Disabilito ModemManager"
-systemctl disable ModemManager
-apt-get purge -y modemmanager
-apt autoremove -y
+warn "MISSING_PACKAGES=$MISSING_PACKAGES"
+
+if [[ ! -z "$MISSING_PACKAGES" ]]; then
+  info "Installo i pacchetti necessari..."
+  apt-get update
+  apt-get install -y $MISSING_PACKAGES
+  #software-properties-common : serve solo su ubuntu per installare il pacchetto add-apt-repository
+  #apt-transport-https  bluez bluetooth libbluetooth-dev
+fi
+#verifico se modemmanager è installato
+MODEMMANAGER=$(dpkg -l|grep ^modemmanager)
+if [[ ! -z "$MODEMMANAGER" ]]; then
+  #modemmanager presente, lo disabilito e disinstallo
+  info "Disabilito ModemManager"
+  systemctl disable ModemManager
+  apt-get purge -y modemmanager
+  apt autoremove -y
+fi
 
 #creo le cartelle se non già presenti
 if [ ! -d "$SCRIPT_DIR" ]; then
@@ -166,9 +198,9 @@ HASSIO_VERSION=$(curl -s $URL_VERSION | jq -e -r '.supervisor')
 cd $SCRIPT_DIR
 
 #rendiamo il file parametrico - ho tolto le referenze a /opt/hassio e sostituito con $BASE_DIR
-info "creo il file $APPARMOR_SETUP"
-info "creo il file $HASSIO_JSON"
-info "creo il file $HASSIO_APPARMOR"
+#info "creo il file $APPARMOR_SETUP"
+#info "creo il file $HASSIO_JSON"
+#info "creo il file $HASSIO_APPARMOR"
 cat << FNE > $APPARMOR_SETUP
 cat << EOF > $HASSIO_JSON
 {
@@ -256,7 +288,7 @@ fi
 cat << EOF >> $COMPOSE_FILE
   hassio_supervisor:
     container_name: hassio_supervisor
-    image: "homeassistant/amd64-hassio-supervisor"
+    image: "$HASSIO_DOCKER"
     privileged: true
 
     volumes:
@@ -286,7 +318,7 @@ cat << EOF >> $COMPOSE_FILE
     environment:
       - SUPERVISOR_SHARE=$BASE_DIR
       - SUPERVISOR_NAME=hassio_supervisor
-      - HOMEASSISTANT_REPOSITORY=homeassistant/qemux86-homeassistant
+      - HOMEASSISTANT_REPOSITORY=$DOCKER_REPO/$MACHINE-$DOCKER_REPO
       - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
     ports:
       - "8124:8123"  
