@@ -156,7 +156,7 @@ fi
 command -v nmcli > /dev/null 2>&1 || MISSING_PACKAGES+=("network-manager")
 command -v apparmor_parser > /dev/null 2>&1 || MISSING_PACKAGES+=("apparmor-utils")
 #docker diamo per scontato che sia già installato insieme al compose?
-#command -v docker > /dev/null 2>&1 || MISSING_PACKAGES+=("docker")
+command -v docker > /dev/null 2>&1 || MISSING_DOCKER=("docker")
 command -v jq > /dev/null 2>&1 || MISSING_PACKAGES+=("jq")
 command -v curl > /dev/null 2>&1 || MISSING_PACKAGES+=("curl")
 command -v dbus-daemon > /dev/null 2>&1 || MISSING_PACKAGES+=("dbus")
@@ -166,7 +166,11 @@ command -v btmon > /dev/null 2>&1 || MISSING_PACKAGES+=("bluetooth")
 command -v update-ca-certificates > /dev/null 2>&1 || MISSING_PACKAGES+=("ca-certificates")
 command -v avahi-daemon > /dev/null 2>&1 || MISSING_PACKAGES+=("avahi-daemon")
 
-#warn "MISSING_PACKAGES=$MISSING_PACKAGES"
+if [[ ! -z "$MISSING_DOCKER" ]]; then
+  curl -fsSL https://get.docker.com -o get-docker.sh
+  sudo sh get-docker.sh
+  rm get-docker.sh
+fi
 
 if [[ ! -z "$MISSING_PACKAGES" ]]; then
   info "Installo i pacchetti necessari..."
