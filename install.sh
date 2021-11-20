@@ -64,7 +64,7 @@ TIMEOUT=1
 if [[ -d $BASE_DIR ]]; then
   echo -n "La cartella $BASE_DIR esiste già, cancello il suo contenuto? [S/N]: ";
   read;
-  if [[ $REPLY =~ ^(si|SI|Si|sI|Y|Yes) ]]; then
+  if [[ $REPLY =~ ^(si|SI|Si|sI|Y|Yes|S|s) ]]; then
     sudo rm -rf $BASE_DIR
   else
     warn "Cartella $BASE_DIR non cancellabile. Seleziona un'altra cartella"
