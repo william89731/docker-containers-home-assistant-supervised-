@@ -164,12 +164,6 @@ command -v btmon > /dev/null 2>&1 || MISSING_PACKAGES+=("bluetooth")
 command -v update-ca-certificates > /dev/null 2>&1 || MISSING_PACKAGES+=("ca-certificates")
 command -v avahi-daemon > /dev/null 2>&1 || MISSING_PACKAGES+=("avahi-daemon")
 
-if [[ ! -z "$MISSING_DOCKER" ]]; then
-  curl -fsSL https://get.docker.com -o get-docker.sh
-  sudo sh get-docker.sh
-  rm get-docker.sh
-fi
-
 if [[ ! -z "$MISSING_ADD_APT" ]]; then
     #aggiungo i repo nel caso di ubuntu
     if [[ "${DISTRO}" =~ ^(ubuntu)$ ]]; then
@@ -185,6 +179,12 @@ if [[ ! -z "$MISSING_PACKAGES" ]]; then
   apt-get install -y $MISSING_PACKAGES
   #software-properties-common : serve solo su ubuntu per installare il pacchetto add-apt-repository
   #apt-transport-https  bluez bluetooth libbluetooth-dev
+fi
+
+if [[ ! -z "$MISSING_DOCKER" ]]; then
+  curl -fsSL https://get.docker.com -o get-docker.sh
+  sudo sh get-docker.sh
+  rm get-docker.sh
 fi
 #verifico se modemmanager è installato
 MODEMMANAGER=$(dpkg -l|grep ^modemmanager)
