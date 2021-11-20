@@ -168,7 +168,7 @@ if [[ ! -z "$MISSING_ADD_APT" ]]; then
     #aggiungo i repo nel caso di ubuntu
     if [[ "${DISTRO}" =~ ^(ubuntu)$ ]]; then
       apt-get update
-      apt-get install add-apt-repository
+      apt-get install software-properties-common
       add-apt-repository universe
     fi
 fi
