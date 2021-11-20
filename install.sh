@@ -148,7 +148,7 @@ info "cominciamo!"
 
 
 # controlla pacchetti mancanti
-command -v add-apt-repository > /dev/null 2>&1 || MISSING_ADD_APT=("add-apt-repository")
+command -v add-apt-repository > /dev/null 2>&1 || MISSING_ADD_APT=("software-properties-common")
 command -v sudo > /dev/null 2>&1 || MISSING_PACKAGES+=("sudo")
 #command -v systemctl > /dev/null 2>&1 || MISSING_PACKAGES+=("systemd")
 command -v nmcli > /dev/null 2>&1 || MISSING_PACKAGES+=("network-manager")
