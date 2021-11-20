@@ -146,12 +146,10 @@ warn "stai per installare dei containers docker di home assistant supervised !"
 sleep $TIMEOUT
 info "cominciamo!"
 
-#aggiungo i repo nel caso di ubuntu
-if [[ "${DISTRO}" =~ ^(ubuntu)$ ]]; then
-  add-apt-repository universe
-fi
 
 # controlla pacchetti mancanti
+command -v add-apt-repository > /dev/null 2>&1 || MISSING_ADD_APT=("add-apt-repository")
+command -v sudo > /dev/null 2>&1 || MISSING_PACKAGES+=("sudo")
 #command -v systemctl > /dev/null 2>&1 || MISSING_PACKAGES+=("systemd")
 command -v nmcli > /dev/null 2>&1 || MISSING_PACKAGES+=("network-manager")
 command -v apparmor_parser > /dev/null 2>&1 || MISSING_PACKAGES+=("apparmor-utils")
@@ -170,6 +168,15 @@ if [[ ! -z "$MISSING_DOCKER" ]]; then
   curl -fsSL https://get.docker.com -o get-docker.sh
   sudo sh get-docker.sh
   rm get-docker.sh
+fi
+
+if [[ ! -z "$MISSING_ADD_APT" ]]; then
+    #aggiungo i repo nel caso di ubuntu
+    if [[ "${DISTRO}" =~ ^(ubuntu)$ ]]; then
+      apt-get update
+      apt-get install add-apt-repository
+      add-apt-repository universe
+    fi
 fi
 
 if [[ ! -z "$MISSING_PACKAGES" ]]; then
