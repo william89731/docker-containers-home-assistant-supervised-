@@ -1,5 +1,21 @@
 #!/bin/bash
 
+echo "
+	 ##         ######   ###   ##  ##    ##  ##    ## 
+	 ##         ######   ###   ##  ##    ##  :##  ##: 
+	 ##           ##     ###:  ##  ##    ##   ##  ##  
+	 ##           ##     ####  ##  ##    ##   :####:  
+	 ##           ##     ##:#: ##  ##    ##    ####   
+	 ##           ##     ## ## ##  ##    ##    :##:   
+	 ##           ##     ## ## ##  ##    ##    :##:   
+	 ##           ##     ## :#:##  ##    ##    ####   
+	 ##           ##     ##  ####  ##    ##   :####:  
+	 ##           ##     ##  :###  ##    ##   ##::##  
+	 ########   ######   ##   ###  :######:  :##  ##: 
+	 ########   ######   ##   ###   :####:   ##    ## "
+TIMEOUT=3	 
+sleep $TIMEOUT	 
+
 declare -a MISSING_PACKAGES
 
 function info { echo -e "\e[32m[info] $*\e[39m"; }
@@ -58,14 +74,14 @@ HASSIO_JSON=$SCRIPT_DIR/hassio.json
 #trovo quale distro è
 DISTRO=$(cat /etc/issue|awk '{print $1}'|tr '[:upper:]' '[:lower:]')
 COMPOSE_DIR=$BASE_DIR
-TIMEOUT=1
+
 
 #controlla se la directory è scrivibile dall'utente 
 if [[ -d $BASE_DIR ]]; then
   echo -n "La cartella $BASE_DIR esiste già, cancello il suo contenuto? [S/N]: ";
   read;
-  if [[ $REPLY =~ ^(si|SI|Si|sI|Y|Yes|S|s) ]]; then
-    rm -rf $BASE_DIR
+  if [[ $REPLY =~ ^(si|SI|Si|sI|Y|Yes) ]]; then
+    sudo rm -rf $BASE_DIR
   else
     warn "Cartella $BASE_DIR non cancellabile. Seleziona un'altra cartella"
     exit 1
@@ -79,7 +95,7 @@ fi
 #controllo la connessione di rete
 while ! ping -c 1 -W 1 ${URL_VERSION_HOST}; do
     info "In attesa di ${URL_VERSION_HOST} - l'interfaccia di rete potrebbe esseere inattiva..."
-    sleep 2
+    sleep $TIMEOUT
 done
 
 # Genera le info HW
@@ -124,20 +140,9 @@ if [[ ! "${MACHINE}" =~ ^(generic-x86-64|odroid-c2|odroid-n2|odroid-xu|qemuarm|q
     info "Tipo di macchina: generic-x86-64, odroid-c2, odroid-n2, odroid-xu, qemuarm, qemuarm-64, qemux86, qemux86-64, raspberrypi, raspberrypi2, raspberrypi3, raspberrypi4, raspberrypi3-64, raspberrypi4-64, tinker, khadas-vim3"
 fi
 
-echo "
-	 ##         ######   ###   ##  ##    ##  ##    ## 
-	 ##         ######   ###   ##  ##    ##  :##  ##: 
-	 ##           ##     ###:  ##  ##    ##   ##  ##  
-	 ##           ##     ####  ##  ##    ##   :####:  
-	 ##           ##     ##:#: ##  ##    ##    ####   
-	 ##           ##     ## ## ##  ##    ##    :##:   
-	 ##           ##     ## ## ##  ##    ##    :##:   
-	 ##           ##     ## :#:##  ##    ##    ####   
-	 ##           ##     ##  ####  ##    ##   :####:  
-	 ##           ##     ##  :###  ##    ##   ##::##  
-	 ########   ######   ##   ###  :######:  :##  ##: 
-	 ########   ######   ##   ###   :####:   ##    ## "
+
 sleep $TIMEOUT
+
 info "Benvenuto,figlio della perdizione "
 #questo codice non funziona su Debian
 printf "\U$(printf %08x 128520)\n"
@@ -146,15 +151,17 @@ warn "stai per installare dei containers docker di home assistant supervised !"
 sleep $TIMEOUT
 info "cominciamo!"
 
+#aggiungo i repo nel caso di ubuntu
+if [[ "${DISTRO}" =~ ^(ubuntu)$ ]]; then
+  add-apt-repository universe
+fi
 
 # controlla pacchetti mancanti
-command -v add-apt-repository > /dev/null 2>&1 || MISSING_ADD_APT=("software-properties-common")
-command -v sudo > /dev/null 2>&1 || MISSING_PACKAGES+=("sudo")
 #command -v systemctl > /dev/null 2>&1 || MISSING_PACKAGES+=("systemd")
 command -v nmcli > /dev/null 2>&1 || MISSING_PACKAGES+=("network-manager")
 command -v apparmor_parser > /dev/null 2>&1 || MISSING_PACKAGES+=("apparmor-utils")
 #docker diamo per scontato che sia già installato insieme al compose?
-command -v docker > /dev/null 2>&1 || MISSING_DOCKER=("docker")
+#command -v docker > /dev/null 2>&1 || MISSING_PACKAGES+=("docker")
 command -v jq > /dev/null 2>&1 || MISSING_PACKAGES+=("jq")
 command -v curl > /dev/null 2>&1 || MISSING_PACKAGES+=("curl")
 command -v dbus-daemon > /dev/null 2>&1 || MISSING_PACKAGES+=("dbus")
@@ -164,14 +171,7 @@ command -v btmon > /dev/null 2>&1 || MISSING_PACKAGES+=("bluetooth")
 command -v update-ca-certificates > /dev/null 2>&1 || MISSING_PACKAGES+=("ca-certificates")
 command -v avahi-daemon > /dev/null 2>&1 || MISSING_PACKAGES+=("avahi-daemon")
 
-if [[ ! -z "$MISSING_ADD_APT" ]]; then
-    #aggiungo i repo nel caso di ubuntu
-    if [[ "${DISTRO}" =~ ^(ubuntu)$ ]]; then
-      apt-get update
-      apt-get install software-properties-common
-      add-apt-repository universe
-    fi
-fi
+#warn "MISSING_PACKAGES=$MISSING_PACKAGES"
 
 if [[ ! -z "$MISSING_PACKAGES" ]]; then
   info "Installo i pacchetti necessari..."
@@ -179,12 +179,6 @@ if [[ ! -z "$MISSING_PACKAGES" ]]; then
   apt-get install -y $MISSING_PACKAGES
   #software-properties-common : serve solo su ubuntu per installare il pacchetto add-apt-repository
   #apt-transport-https  bluez bluetooth libbluetooth-dev
-fi
-
-if [[ ! -z "$MISSING_DOCKER" ]]; then
-  curl -fsSL https://get.docker.com -o get-docker.sh
-  sudo sh get-docker.sh
-  rm get-docker.sh
 fi
 #verifico se modemmanager è installato
 MODEMMANAGER=$(dpkg -l|grep ^modemmanager)
@@ -279,6 +273,36 @@ FNE
 chmod +x $APPARMOR_SETUP
 $APPARMOR_SETUP
 
+#installazione docker
+
+get_latest_release() {
+   curl -sL https://api.github.com/repos/$1/releases/latest | grep '"tag_name":' | cut -d'"' -f4
+}
+
+COMPOSE_LATEST_VERSION=$(get_latest_release "docker/compose")
+
+echo "Docker compose plugin latest version: $COMPOSE_LATEST_VERSION"
+
+curl -fsSL https://get.docker.com -o get-docker.sh | sh
+
+sh get-docker.sh
+
+rm get-docker.sh
+
+echo "Docker installed."
+
+#installazione docker compose
+
+sudo mkdir -p /usr/lib/docker/cli-plugins/
+
+sudo curl -SL https://github.com/docker/compose/releases/download/$COMPOSE_LATEST_VERSION/docker-compose-linux-x$ARCH -o /usr/lib/docker/cli-plugins/docker-compose
+
+sudo chmod +x /usr/lib/docker/cli-plugins/docker-compose
+
+echo "lanciare docker -v && docker-compose version per verificare installazione."
+
+
+#docker-compose.yml
 if [[ -f "$COMPOSE_DIR/docker-compose.yml" ]]; then
   COMPOSE_FILE=$COMPOSE_DIR/docker-compose.yml
 fi
@@ -362,5 +386,5 @@ EOF
 
 info "fine installazione. BUON DIVERTIMENTO"
 info "E' stato installato Home Assistant Supervised versione ${HASSIO_VERSION}"
-info "Puoi trovare la tua installazione a http://${IP_ADDRESS}:8123"
+info "Puoi trovare la tua installazione a http://${IP_ADDRESS}:8124"
 
