@@ -78,9 +78,9 @@ COMPOSE_DIR=$BASE_DIR
 
 #controlla se la directory è scrivibile dall'utente 
 if [[ -d $BASE_DIR ]]; then
-  echo -n "La cartella $BASE_DIR esiste già, cancello il suo contenuto? [S/N]: ";
+  echo -n "La cartella $BASE_DIR esiste già, cancello il suo contenuto? [Y/N]: ";
   read;
-  if [[ $REPLY =~ ^(si|SI|Si|sI|Y|Yes) ]]; then
+  if [[ $REPLY =~ ^(Y) ]]; then
     sudo rm -rf $BASE_DIR
   else
     warn "Cartella $BASE_DIR non cancellabile. Seleziona un'altra cartella"
@@ -200,106 +200,6 @@ fi
 
 HASSIO_VERSION=$(curl -s $URL_VERSION | jq -e -r '.supervisor')
 
-cd $SCRIPT_DIR
-
-#rendiamo il file parametrico - ho tolto le referenze a /opt/hassio e sostituito con $BASE_DIR
-#info "creo il file $APPARMOR_SETUP"
-#info "creo il file $HASSIO_JSON"
-#info "creo il file $HASSIO_APPARMOR"
-cat << FNE > $APPARMOR_SETUP
-cat << EOF > $HASSIO_JSON
-{
-    "supervisor": "${HASSIO_DOCKER}",
-    "machine": "${MACHINE}",
-    "data": "${DATA_SHARE}"
-}
-EOF
-
-cat << 'FOE' > $HASSIO_APPARMOR
-#!/usr/bin/env bash
-set -e
-
-# leggi config
-DATA="\$(jq --raw-output '.data // "/usr/share/hassio"' ${HASSIO_JSON})"
-PROFILES_DIR="\${DATA}/apparmor"
-CACHE_DIR="\${PROFILES_DIR}/cache"
-REMOVE_DIR="\${PROFILES_DIR}/remove"
-
-#  AppArmor
-if ! command -v apparmor_parser > /dev/null 2>&1; then
-    echo "[Warning]: No apparmor_parser on host system!"
-    exit 0
-fi
-
-# Check struttura cartelle
-mkdir -p "\${PROFILES_DIR}"
-mkdir -p "\${CACHE_DIR}"
-mkdir -p "\${REMOVE_DIR}"
-
-curl -sL ${URL_APPARMOR_PROFILE} > "\${PROFILES_DIR}/hassio-supervisor"
-
-# Load/Update profili
-for profile in "\${PROFILES_DIR}"/*; do
-    if [ ! -f "\${profile}" ]; then
-        continue
-    fi
-
-    # Carica i profili apparmor
-    if ! apparmor_parser -r -W -L "\${CACHE_DIR}" "\${profile}"; then
-        echo "[Errore]: Non riesco a caricare il profilo \${profile}"
-    fi
-done
-
-# Pulisci i vecchi profili
-for profile in "\${REMOVE_DIR}"/*; do
-    if [ ! -f "\${profile}" ]; then
-        continue
-    fi
-
-    # Unload Profili
-    if apparmor_parser -R -W -L "\${CACHE_DIR}" "\${profile}"; then
-        if rm -f "\${profile}"; then
-            continue
-        fi
-    fi
-    echo "[Error]: Non riesco a rimuovere il profilo \${profile}"
-done
-FOE
-chmod +x $HASSIO_APPARMOR
-#repeated on purpose
-$HASSIO_APPARMOR
-$HASSIO_APPARMOR
-FNE
-chmod +x $APPARMOR_SETUP
-$APPARMOR_SETUP
-
-#installazione docker
-
-get_latest_release() {
-   curl -sL https://api.github.com/repos/$1/releases/latest | grep '"tag_name":' | cut -d'"' -f4
-}
-
-COMPOSE_LATEST_VERSION=$(get_latest_release "docker/compose")
-
-echo "Docker compose plugin latest version: $COMPOSE_LATEST_VERSION"
-
-curl -fsSL https://get.docker.com -o get-docker.sh | sh
-
-sh get-docker.sh
-
-rm get-docker.sh
-
-echo "Docker installed."
-
-#installazione docker compose
-
-sudo mkdir -p /usr/lib/docker/cli-plugins/
-
-sudo curl -SL https://github.com/docker/compose/releases/download/$COMPOSE_LATEST_VERSION/docker-compose-linux-x$ARCH -o /usr/lib/docker/cli-plugins/docker-compose
-
-sudo chmod +x /usr/lib/docker/cli-plugins/docker-compose
-
-echo "lanciare docker -v && docker-compose version per verificare installazione."
 
 
 #docker-compose.yml
@@ -348,7 +248,7 @@ cat << EOF >> $COMPOSE_FILE
 
     security_opt:
       - seccomp:unconfined
-      - apparmor:hassio-supervisor
+    #  - apparmor:hassio-supervisor
 
     environment:
       - SUPERVISOR_SHARE=$DATA_SHARE
@@ -358,9 +258,10 @@ cat << EOF >> $COMPOSE_FILE
     ports:
       - "8124:8123"  
 EOF
-docker-compose up -d 
 
-sleep 5
+
+
+sleep $TIMEOUT
 
 echo "
 ╔╗ ╔╗╔═══╗╔═╗╔═╗╔═══╗    ╔═══╗╔═══╗╔═══╗╔══╗╔═══╗╔════╗╔═══╗╔═╗ ╔╗╔════╗
@@ -373,18 +274,17 @@ echo "
                                                                         
 
                                                                         
-sleep 3                                                                        
-
-info "Memorizzo i percorsi per la disinstallazione"
-#è corretto memorizzarli qui?
-cat << EOF > /root/.ha_uninstall
-BASE_DIR=$BASE_DIR
-SCRIPT_DIR=$SCRIPT_DIR
-DATA_SHARE=$DATA_SHARE
-COMPOSE_DIR=$COMPOSE_DIR
-EOF
+sleep $TIMEOUT                                                                        
 
 info "fine installazione. BUON DIVERTIMENTO"
-info "E' stato installato Home Assistant Supervised versione ${HASSIO_VERSION}"
-info "Puoi trovare la tua installazione a http://${IP_ADDRESS}:8124"
+
+
+
+echo "
+	╔══╗ ╔╗  ╔╗╔═══╗    ╔══╗ ╔╗  ╔╗╔═══╗
+	║╔╗║ ║╚╗╔╝║║╔══╝    ║╔╗║ ║╚╗╔╝║║╔══╝
+	║╚╝╚╗╚╗╚╝╔╝║╚══╗    ║╚╝╚╗╚╗╚╝╔╝║╚══╗
+	║╔═╗║ ╚╗╔╝ ║╔══╝    ║╔═╗║ ╚╗╔╝ ║╔══╝
+	║╚═╝║  ║║  ║╚══╗    ║╚═╝║  ║║  ║╚══╗
+	╚═══╝  ╚╝  ╚═══╝    ╚═══╝  ╚╝  ╚═══╝"
 
