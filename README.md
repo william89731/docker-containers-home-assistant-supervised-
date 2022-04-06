@@ -15,9 +15,9 @@ do you like supervisor? :-)
 
 # requirements
 
-os linux
+[os linux](https://www.linux.org/pages/download/)
 
-docker and docker compose (or docker compose v2)
+[docker](https://www.docker.com/) and [docker compose](https://docs.docker.com/engine/reference/commandline/compose/) (or [docker compose v2](https://docs.docker.com/compose/cli-command/))
 
 get where no one has gone before :)
 
