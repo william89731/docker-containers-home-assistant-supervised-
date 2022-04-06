@@ -27,11 +27,9 @@ where you downloaded the [script](https://github.com/william89731/docker-contain
 
 launch:
 
-sudo chmod +x install.sh
+sudo chmod +x install.sh && sudo ./install.sh && cd /opt/hassio && docker compose up -d
 
-sudo ./install.sh
-
-cd /opt/hassio && docker compose up -d
+and follow the instructions in the terminal
 
 # final
 
