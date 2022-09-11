@@ -1,11 +1,7 @@
 #!/bin/bash
 
-
 TIMEOUT=3	 
-sleep $TIMEOUT	 
-
 declare -a MISSING_PACKAGES
-
 function info { echo -e "\e[32m[info] $*\e[39m"; }
 function warn  { echo -e "\e[33m[warn] $*\e[39m"; }
 function error { echo -e "\e[31m[error] $*\e[39m"; exit 1; }
