@@ -135,10 +135,7 @@ case $ARCH in
     ;;
 esac
 
-if [[ ! "${MACHINE}" =~ ^(generic-x86-64|odroid-c2|odroid-n2|odroid-xu|qemuarm|qemuarm-64|qemux86|qemux86-64|raspberrypi|raspberrypi2|raspberrypi3|raspberrypi4|raspberrypi3-64|raspberrypi4-64!tinker|khadas-vim3)$ ]]; then
-    error "Unknown machine type: ${MACHINE}!"
-    info "machine type: generic-x86-64, odroid-c2, odroid-n2, odroid-xu, qemuarm, qemuarm-64, qemux86, qemux86-64, raspberrypi, raspberrypi2, raspberrypi3, raspberrypi4, raspberrypi3-64, raspberrypi4-64, tinker, khadas-vim3"
-fi
+
 
 
 sleep $TIMEOUT
