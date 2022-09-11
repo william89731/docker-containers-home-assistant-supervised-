@@ -1,18 +1,6 @@
 #!/bin/bash
 
-echo "
-	 ##         ######   ###   ##  ##    ##  ##    ## 
-	 ##         ######   ###   ##  ##    ##  :##  ##: 
-	 ##           ##     ###:  ##  ##    ##   ##  ##  
-	 ##           ##     ####  ##  ##    ##   :####:  
-	 ##           ##     ##:#: ##  ##    ##    ####   
-	 ##           ##     ## ## ##  ##    ##    :##:   
-	 ##           ##     ## ## ##  ##    ##    :##:   
-	 ##           ##     ## :#:##  ##    ##    ####   
-	 ##           ##     ##  ####  ##    ##   :####:  
-	 ##           ##     ##  :###  ##    ##   ##::##  
-	 ########   ######   ##   ###  :######:  :##  ##: 
-	 ########   ######   ##   ###   :####:   ##    ## "
+
 TIMEOUT=3	 
 sleep $TIMEOUT	 
 
@@ -21,6 +9,29 @@ declare -a MISSING_PACKAGES
 function info { echo -e "\e[32m[info] $*\e[39m"; }
 function warn  { echo -e "\e[33m[warn] $*\e[39m"; }
 function error { echo -e "\e[31m[error] $*\e[39m"; exit 1; }
+
+echo "
+╔╗ ╔╗╔═══╗╔═╗╔═╗╔═══╗    ╔═══╗╔═══╗╔═══╗╔══╗╔═══╗╔════╗╔═══╗╔═╗ ╔╗╔════╗
+║║ ║║║╔═╗║║║╚╝║║║╔══╝    ║╔═╗║║╔═╗║║╔═╗║╚╣╠╝║╔═╗║║╔╗╔╗║║╔═╗║║║╚╗║║║╔╗╔╗║
+║╚═╝║║║ ║║║╔╗╔╗║║╚══╗    ║║ ║║║╚══╗║╚══╗ ║║ ║╚══╗╚╝║║╚╝║║ ║║║╔╗╚╝║╚╝║║╚╝
+║╔═╗║║║ ║║║║║║║║║╔══╝    ║╚═╝║╚══╗║╚══╗║ ║║ ╚══╗║  ║║  ║╚═╝║║║╚╗║║  ║║  
+║║ ║║║╚═╝║║║║║║║║╚══╗    ║╔═╗║║╚═╝║║╚═╝║╔╣╠╗║╚═╝║ ╔╝╚╗ ║╔═╗║║║ ║║║ ╔╝╚╗ 
+╚╝ ╚╝╚═══╝╚╝╚╝╚╝╚═══╝    ╚╝ ╚╝╚═══╝╚═══╝╚══╝╚═══╝ ╚══╝ ╚╝ ╚╝╚╝ ╚═╝ ╚══╝ "
+sleep $TIMEOUT
+echo ""
+echo ""
+warn "press ctr+c to abort this script"	 
+count=0
+total=34
+pstr="[=======================================================================] "
+while [ $count -lt $total ]; do
+  sleep 0.5 # this is work
+  count=$(( $count + 1 ))
+  pd=$(( $count * 73 / $total ))
+  printf "\r%3d.%1d%% %.${pd}s" $(( $count * 100 / $total )) $(( ($count * 1000 / $total) % 10 )) $pstr  
+done	 
+echo ""
+echo ""
 
 if [[ $EUID -ne 0 ]]; then
    error "This script must be run as root" 
@@ -119,10 +130,7 @@ case $ARCH in
         HASSIO_DOCKER="$DOCKER_REPO/armv7-hassio-supervisor"
     ;;
     "aarch64")
-        if [ -z $MACHINE ]; then
-            error "Please set the machine type (-m) for $ARCH"
-            info "machine type: intel-nuc / odroid-c2 / odroid-n2 / odroid-xu / qemuarm / qemuarm-64 / qemux86 / qemux86-64 / raspberrypi / raspberrypi2 / raspberrypi3 / raspberrypi4 / raspberrypi3-64 / raspberrypi4-64 / tinker"
-        fi
+        MACHINE=${MACHINE:=raspberrypi4-64}
         HASSIO_DOCKER="$DOCKER_REPO/aarch64-hassio-supervisor"
     ;;
     *)
@@ -250,33 +258,12 @@ cat << EOF >> $COMPOSE_FILE
     ports:
       - "8124:8123"  
 EOF
-
-
-
-sleep $TIMEOUT
-
-echo "
-╔╗ ╔╗╔═══╗╔═╗╔═╗╔═══╗    ╔═══╗╔═══╗╔═══╗╔══╗╔═══╗╔════╗╔═══╗╔═╗ ╔╗╔════╗
-║║ ║║║╔═╗║║║╚╝║║║╔══╝    ║╔═╗║║╔═╗║║╔═╗║╚╣╠╝║╔═╗║║╔╗╔╗║║╔═╗║║║╚╗║║║╔╗╔╗║
-║╚═╝║║║ ║║║╔╗╔╗║║╚══╗    ║║ ║║║╚══╗║╚══╗ ║║ ║╚══╗╚╝║║╚╝║║ ║║║╔╗╚╝║╚╝║║╚╝
-║╔═╗║║║ ║║║║║║║║║╔══╝    ║╚═╝║╚══╗║╚══╗║ ║║ ╚══╗║  ║║  ║╚═╝║║║╚╗║║  ║║  
-║║ ║║║╚═╝║║║║║║║║╚══╗    ║╔═╗║║╚═╝║║╚═╝║╔╣╠╗║╚═╝║ ╔╝╚╗ ║╔═╗║║║ ║║║ ╔╝╚╗ 
-╚╝ ╚╝╚═══╝╚╝╚╝╚╝╚═══╝    ╚╝ ╚╝╚═══╝╚═══╝╚══╝╚═══╝ ╚══╝ ╚╝ ╚╝╚╝ ╚═╝ ╚══╝ "
-                                                                        
-                                                                        
-
-                                                                        
-sleep $TIMEOUT                                                                        
-
+sleep $TIMEOUT   
+echo ""
+echo ""                                                                  
 info "end of installation. HAVE FUN!"
 
 
 
-echo "
-	╔══╗ ╔╗  ╔╗╔═══╗    ╔══╗ ╔╗  ╔╗╔═══╗
-	║╔╗║ ║╚╗╔╝║║╔══╝    ║╔╗║ ║╚╗╔╝║║╔══╝
-	║╚╝╚╗╚╗╚╝╔╝║╚══╗    ║╚╝╚╗╚╗╚╝╔╝║╚══╗
-	║╔═╗║ ╚╗╔╝ ║╔══╝    ║╔═╗║ ╚╗╔╝ ║╔══╝
-	║╚═╝║  ║║  ║╚══╗    ║╚═╝║  ║║  ║╚══╗
-	╚═══╝  ╚╝  ╚═══╝    ╚═══╝  ╚╝  ╚═══╝"
+
 
