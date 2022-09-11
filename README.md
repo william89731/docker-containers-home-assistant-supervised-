@@ -11,7 +11,7 @@ do you like supervisor? :-)
 
 # warning
 
-```tested on x86_64, raspberry 64-4```
+```tested on x86_64, raspberrypi 64-4```
 
 # requirements
 
