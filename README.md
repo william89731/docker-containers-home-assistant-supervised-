@@ -11,7 +11,7 @@ do you like supervisor? :-)
 
 # warning
 
-**I recommend installing in a vm or other machine. this is a deployement test!**
+```tested on x86_64, raspberry 64-4```
 
 # requirements
 
@@ -26,8 +26,9 @@ get where no one has gone before :)
 where you downloaded the [script](https://github.com/william89731/docker-containers-home-assistant-supervised-/blob/main/install.sh),
 
 launch:
-
+```bash
 sudo chmod +x install.sh && sudo ./install.sh && cd /opt/hassio && docker compose up -d
+```
 
 and follow the instructions in the terminal
 
