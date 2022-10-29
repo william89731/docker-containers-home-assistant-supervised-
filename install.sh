@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TIMEOUT=3	 
+TIMEOUT=0	 
 declare -a MISSING_PACKAGES
 function info { echo -e "\e[32m[info] $*\e[39m"; }
 function warn  { echo -e "\e[33m[warn] $*\e[39m"; }
@@ -21,7 +21,7 @@ count=0
 total=34
 pstr="[=======================================================================] "
 while [ $count -lt $total ]; do
-  sleep 0.5 # this is work
+  sleep 0.1 # this is work
   count=$(( $count + 1 ))
   pd=$(( $count * 73 / $total ))
   printf "\r%3d.%1d%% %.${pd}s" $(( $count * 100 / $total )) $(( ($count * 1000 / $total) % 10 )) $pstr  
@@ -66,8 +66,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 BASE_DIR=${BASE_DIR:-/opt/hassio}
-SCRIPT_DIR=${SCRIPT_DIR:-$BASE_DIR/scripts}
-DATA_SHARE=${DATA_SHARE:-$BASE_DIR}
+#cartella per i daati
+DATA_SHARE=${DATA_SHARE:-$BASE_DIR/data}
+SCRIPT_DIR=${SCRIPT_DIR:-$DATA_SHARE/scripts}
 DOCKER_REPO=homeassistant
 
 URL_VERSION_HOST="version.home-assistant.io"
@@ -75,13 +76,18 @@ URL_VERSION="https://version.home-assistant.io/stable.json"
 URL_APPARMOR_PROFILE="https://version.home-assistant.io/apparmor.txt"
 
 #da qui si possono impostare tutti i parametri dei files e delle cartelle
+#cartella per i profili apparmor
+APPARMOR_DIR=${DATA_SHARE}/apparmor
+#profilo apparmor per HA 
+HASSIO_APPARMOR=$APPARMOR_DIR/hassio-apparmor
+#script per caricare i profili apparmor
 APPARMOR_SETUP=$SCRIPT_DIR/apparmor_setup.sh
-HASSIO_APPARMOR=$SCRIPT_DIR/hassio-apparmor
-HASSIO_JSON=$SCRIPT_DIR/hassio.json
+#file di configurazione per docker
+#HASSIO_JSON=$SCRIPT_DIR/hassio.json
 #trovo quale distro è
 DISTRO=$(cat /etc/issue|awk '{print $1}'|tr '[:upper:]' '[:lower:]')
 COMPOSE_DIR=$BASE_DIR
-
+UNINSTALL_FILE=/root/.ha_uninstall
 
 #controlla se la directory è scrivibile dall'utente 
 if [[ -d $BASE_DIR ]]; then
@@ -94,6 +100,14 @@ if [[ -d $BASE_DIR ]]; then
     exit 1
   fi
 fi
+# CREO LE ALTRE CARTELLE NECESSARIE
+if [[ ! -d $SCRIPT_DIR ]]; then
+    mkdir -p $SCRIPT_DIR
+fi
+if [[ ! -d $APPARMOR_DIR ]]; then
+    mkdir -p $APPARMOR_DIR
+fi
+
 
 #controllo la connessione di rete
 while ! ping -c 1 -W 1 ${URL_VERSION_HOST}; do
@@ -135,9 +149,6 @@ case $ARCH in
     ;;
 esac
 
-
-
-
 sleep $TIMEOUT
 
 info "welcome "
@@ -164,7 +175,7 @@ command -v btmon > /dev/null 2>&1 || MISSING_PACKAGES+=("bluetooth")
 command -v update-ca-certificates > /dev/null 2>&1 || MISSING_PACKAGES+=("ca-certificates")
 command -v avahi-daemon > /dev/null 2>&1 || MISSING_PACKAGES+=("avahi-daemon")
 
-#warn "MISSING_PACKAGES=$MISSING_PACKAGES"
+warn "MISSING_PACKAGES=$MISSING_PACKAGES"
 
 if [[ ! -z "$MISSING_PACKAGES" ]]; then
   info "I install the necessary packages ..."
@@ -191,9 +202,103 @@ if [ ! -d "$DATA_SHARE" ]; then
     mkdir -p "$DATA_SHARE"
 fi
 
+#install il file di configurazione di docker
+if [[ -f /etc/docker/daemon.json ]]; then
+    warn "Il file /etc/docker/daemon.json esiste gia."
+    warn "Modificarlo a mano per inserire i seguenti valori"
+    warn '{ 
+    "log-driver": "journald",
+    "storage-driver": "overlay2",
+    "ip6tables": true,
+    "experimental": true,
+    "log-opts": {
+        "tag": "{{.Name}}"
+        }
+    }'
+else 
+    cat << EFO > /etc/docker/daemon.json 
+{
+    "log-driver": "journald",
+    "storage-driver": "overlay2",
+    "ip6tables": true,
+    "experimental": true,
+    "log-opts": {
+        "tag": "{{.Name}}"
+    }
+}
+EFO
+fi
+
+cat << FOE > /etc/systemd/system/hassio-apparmor.service
+[Unit]
+Description=Hass.io AppArmor
+#Wants=hassio-supervisor.service
+Before=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=${APPARMOR_SETUP}
+
+[Install]
+WantedBy=multi-user.target
+FOE
+
+
+cat << FEO > /usr/lib/systemd/system/systemd-journal-gatewayd.socket
+[Unit]
+Description=Journal Gateway Service Socket
+Documentation=man:systemd-journal-gatewayd(8)
+
+[Socket]
+ListenStream=/run/systemd-journal-gatewayd.sock
+
+[Install]
+WantedBy=sockets.target
+FEO
+
 HASSIO_VERSION=$(curl -s $URL_VERSION | jq -e -r '.supervisor')
 
+#Install AppArmor - downlod profile and save it
+curl -sL ${URL_APPARMOR_PROFILE} > "${HASSIO_APPARMOR}"
 
+
+# create apparmor-setup.sh
+cat << END > $APPARMOR_SETUP
+#!/usr/bin/env bash
+set -e
+
+# Read configs
+DATA=${DATA_SHARE}
+PROFILES_DIR=${APPARMOR_DIR}
+CACHE_DIR="\${PROFILES_DIR}/cache"
+
+# Check folder structure
+mkdir -p "\${PROFILES_DIR}"
+mkdir -p "\${CACHE_DIR}"
+
+# Load existing profiles
+for profile in "\${PROFILES_DIR}"/*; do
+    if [ ! -f "\${profile}" ]; then
+        continue
+    fi
+
+    # Load Profile
+    if ! apparmor_parser -r -W -L "\${CACHE_DIR}" "\${profile}"; then
+        echo "[Error]: Can't load profile \${profile}"
+    fi
+done
+END
+
+chmod +x ${APPARMOR_SETUP}
+
+#eseguo lo script app_armor setupd
+info "Loading apparmor profiles..."
+#$APPARMOR_SETUP
+systemctl enable hassio-apparmor.service> /dev/null 2>&1;
+systemctl start hassio-apparmor.service> /dev/null 2>&1;
+systemctl enable systemd-journal-gatewayd.socket> /dev/null 2>&1;
+systemctl start systemd-journal-gatewayd.socket> /dev/null 2>&1;
 
 #docker-compose.yml
 if [[ -f "$COMPOSE_DIR/docker-compose.yml" ]]; then
@@ -206,57 +311,54 @@ fi
 if [[ ! -f "$COMPOSE_FILE" ]]; then
   #non esiste nessuna delle due versioni del compose file pertanto lo creiamo
   COMPOSE_FILE=$COMPOSE_DIR/docker-compose.yaml  
-  cat << EOF > $COMPOSE_FILE
+  cat << NED > $COMPOSE_FILE
 version: '3.8'
 services:
-EOF
+NED
 fi   
 
 #sia che esista il compose o che lo abbia creato io, finisco di inserire i valori.
-cat << EOF >> $COMPOSE_FILE
+cat << DEN >> $COMPOSE_FILE
   hassio_supervisor:
     container_name: hassio_supervisor
     image: "$HASSIO_DOCKER"
     privileged: true
 
     volumes:
-      - type: bind
-        source: $DATA_SHARE
-        target: /data
-      - type: bind
-        source: /etc/machine-id
-        target: /etc/machine-id
-      - type: bind
-        source: /etc/localtime
-        target: /etc/localtime
-      - type: bind
-        source: /run/docker.sock
-        target: /run/docker.sock
-      - type: bind
-        source: /run/dbus
-        target: /run/dbus
-      - type: bind
-        source: /dev/bus/usb
-        target: /dev/bus/usb
+      - $DATA_SHARE:/data
+      - /run/docker.sock:/run/docker.sock:rw
+      - /run/systemd-journal-gatewayd.sock:/run/systemd-journal-gatewayd.sock:rw
+      - /run/dbus:/run/dbus:ro
+      - /run/udev:/run/udev:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - /etc/localtime:/etc/localtime
+      - /dev/bus/usb:/dev/bus/usb
 
     security_opt:
       - seccomp:unconfined
-    #  - apparmor:hassio-supervisor
+      - apparmor:hassio-supervisor
 
     environment:
       - SUPERVISOR_SHARE=$DATA_SHARE
       - SUPERVISOR_NAME=hassio_supervisor
+      - SUPERVISOR_MACHINE=${MACHINE}
       - HOMEASSISTANT_REPOSITORY=$DOCKER_REPO/$MACHINE-$DOCKER_REPO
       - DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
     ports:
       - "8124:8123"  
-EOF
+DEN
 sleep $TIMEOUT   
+if [[ -f ${UNINSTALL_FILE} ]]; then
+    #piallo il file
+    truncate -s 0 $UNINSTALL_FILE
+else
+    touch $UNINSTALL_FILE
+fi
+echo "COMPOSE_FILE=${COMPOSE_FILE}" >> ${UNINSTALL_FILE}
+echo "BASE_DIR=${BASE_DIR}" >> ${UNINSTALL_FILE}
+echo "COMPOSE_DIR=${COMPOSE_DIR}" >> ${UNINSTALL_FILE}
+echo "DATA_SHARE=${DATA_SHARE}" >> ${UNINSTALL_FILE}
+
 echo ""
 echo ""                                                                  
 info "end of installation. HAVE FUN!"
-
-
-
-
-
