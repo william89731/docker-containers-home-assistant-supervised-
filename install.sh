@@ -323,6 +323,8 @@ cat << DEN >> $COMPOSE_FILE
     container_name: hassio_supervisor
     image: "$HASSIO_DOCKER"
     privileged: true
+    restart: "always"
+    network_mode: "host"
 
     volumes:
       - $DATA_SHARE:/data
