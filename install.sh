@@ -324,7 +324,6 @@ cat << DEN >> $COMPOSE_FILE
     image: "$HASSIO_DOCKER"
     privileged: true
     restart: "always"
-    network_mode: "host"
 
     volumes:
       - $DATA_SHARE:/data
@@ -362,5 +361,8 @@ echo "COMPOSE_DIR=${COMPOSE_DIR}" >> ${UNINSTALL_FILE}
 echo "DATA_SHARE=${DATA_SHARE}" >> ${UNINSTALL_FILE}
 
 echo ""
-echo ""                                                                  
+echo "Now give this command"                                                                  
+echo "docker-compose -f $COMPOSE_DIR/docker-compose.yaml up -d"
+echo "Wait for some minute for the system to come up and then digit this address in the browser"
+echo "http://$IP_ADDRESS:8123"
 info "end of installation. HAVE FUN!"
