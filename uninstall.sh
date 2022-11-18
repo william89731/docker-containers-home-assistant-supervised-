@@ -66,6 +66,7 @@ cd $BASE_DIR
 
 docker-compose -f $COMPOSE_FILE down --remove-orphans
 
+info "Stopping Services"
 docker stop hassio_audio
 docker stop hassio_cli
 docker stop hassio_dns
@@ -73,6 +74,7 @@ docker stop hassio_multicast
 docker stop hassio_observer
 docker stop homeassistant
 
+info "Removing Services"
 docker rm hassio_audio
 docker rm hassio_cli
 docker rm hassio_dns
@@ -98,7 +100,7 @@ info "docker image prune -a"
 info "Do you want to run it now? [Y/N]"
 read;
 if [[ $REPLY =~ ^(Y) ]]; then
-    sudo docker image prune -a -f --filtet until=1h
+    sudo docker image prune -a -f --filter until=1h
 fi
 
 rm -rf COMPOSE_FILE
