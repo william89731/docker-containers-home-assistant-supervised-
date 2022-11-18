@@ -35,7 +35,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-war "rimozione di home assistant!"
+warn "rimozione di home assistant!"
 sleep $TIMEOUT
 info "cominciamo!"
 
